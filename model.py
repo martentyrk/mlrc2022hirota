@@ -7,9 +7,6 @@ import torch.utils.data as data
 from transformers import BertModel
 
 
-
-
-
 class BERT_Classifier(nn.Module):
 
     def __init__(self, args, cls_hid_dim):
