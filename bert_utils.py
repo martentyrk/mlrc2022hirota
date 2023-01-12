@@ -1,46 +1,17 @@
 import torch
-import csv
-import spacy
-import re
-import pickle
 import random
-import csv
-from nltk import word_tokenize
 import nltk
 nltk.download('punkt')
-import time
 
-import argparse
-import os
-import pprint
 import numpy as np
-from nltk.tokenize import word_tokenize
-from io import open
-import sys
-import json
-import pickle
-from torch import nn
 import torch.optim as optim
 import torch.nn.functional as F
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from operator import itemgetter
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import average_precision_score
 from sklearn.metrics import accuracy_score
-import transformers as tf
-from transformers import BertTokenizer
-from transformers import PYTORCH_PRETRAINED_BERT_CACHE
-from transformers import BertConfig, WEIGHTS_NAME, CONFIG_NAME
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import AdamW
 
-import torch.utils.data as data
-from transformers import BertModel
-from transformers import BertPreTrainedModel
-
-from model import BERT_GenderClassifier
-from bias_dataset import BERT_ANN_leak_data, BERT_MODEL_leak_data
-
-from string import punctuation
 
 #Was previously in file bert_leakage.py
 def make_train_test_split(args, gender_task_mw_entries):
@@ -90,7 +61,7 @@ def calc_random_acc_score(args, model, test_dataloader):
     model = model.cuda()
     optimizer = None
     epoch = None
-    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500)
+    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(args, test_dataloader, model, optimizer, False, print_every=500)
 
     return val_acc, val_loss, val_male_acc, val_female_acc, avg_score
 
@@ -118,7 +89,7 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     # training
     for epoch in range(args.num_epochs):
         # train
-        train_loss, train_acc, _, _, _ = calc_leak_epoch_pass(epoch, train_dataloader, model, optimizer, True, print_every=500)
+        train_loss, train_acc, _, _, _ = calc_leak_epoch_pass(args, train_dataloader, model, optimizer, True, print_every=500)
         train_loss_arr.append(train_loss)
         train_acc_arr.append(train_acc)
         if epoch % 5 == 0:
@@ -129,7 +100,7 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     print('{0}: train acc: {1:2f}'.format(epoch, train_acc))
 
     # validation
-    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500)
+    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(args, test_dataloader, model, optimizer, False, print_every=500)
     print('val, {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
     if args.calc_mw_acc:
         print('val, {0}, val loss: {1:.2f}, Male val acc: {2:.2f}'.format(epoch, val_loss*100, val_male_acc *100))
@@ -139,9 +110,10 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
 
 
 
-#TODO: epoch is an unused variable in this function.
-# TODO: args is missing, should be passed down as a parameter.
-def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_every):
+#TODO: epoch is an unused variable in this function, I removed it and changed to args.
+# TODO: I would also maybe rename this to smth else since its the training or validation loop
+
+def calc_leak_epoch_pass(args, data_loader, model, optimizer, training, print_every):
     t_loss = 0.0
     n_processed = 0
     preds = list()
@@ -198,6 +170,7 @@ def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_e
             for i in range(pred_score_tensor.size(0)):
                 male_score = F.softmax(predictions, dim=1).cpu().detach()[i,0]
                 female_score = F.softmax(predictions, dim=1).cpu().detach()[i,1]
+
                 if male_score >= female_score:
                     pred_score = male_score
                 else:

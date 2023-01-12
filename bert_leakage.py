@@ -1,45 +1,20 @@
 import argparse
 import torch
-import csv
-import spacy
-import re
 import pickle
 import random
 import csv
-from nltk import word_tokenize
 import nltk
 nltk.download('punkt')
-import time
 
 import argparse
-import os
-import pprint
 import numpy as np
-from nltk.tokenize import word_tokenize
 from io import open
-import sys
-import json
 import pickle
-from torch import nn
-import torch.optim as optim
-import torch.nn.functional as F
-from tqdm import tqdm, trange
-from operator import itemgetter
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import average_precision_score
-from sklearn.metrics import accuracy_score
-import transformers as tf
 from transformers import BertTokenizer
-from transformers import PYTORCH_PRETRAINED_BERT_CACHE
-from transformers import BertConfig, WEIGHTS_NAME, CONFIG_NAME
-from transformers import AdamW, get_linear_schedule_with_warmup
-
-import torch.utils.data as data
-from transformers import BertModel
-from transformers import BertPreTrainedModel
 
 from model import BERT_GenderClassifier
 from bias_dataset import BERT_ANN_leak_data, BERT_MODEL_leak_data
+from bert_utils import make_train_test_split, calc_leak, calc_random_acc_score
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -152,9 +127,10 @@ def main(args):
                 female_acc_list.append(val_female_acc)
                 score_list.append(avg_score)
 
+            avg_score = sum(score_list) / len(score_list)
+            
             female_avg_acc = sum(female_acc_list) / len(female_acc_list)
             male_avg_acc = sum(male_acc_list) / len(male_acc_list)
-            avg_score = sum(score_list) / len(score_list)
             print('########### Reluts ##########')
             print(f"LIC score (LIC_D): {avg_score*100:.2f}%")
             #print(f"\t Female Accuracy: {female_avg_acc*100:.2f}%")
@@ -179,6 +155,7 @@ def main(args):
             # initialize gender classifier
             model = BERT_GenderClassifier(args, tokenizer)
             # calculate random predictions
+            #the line below is kind of useless but it prints out a lot of stuff in calc_random_acc_score
             rand_val_acc, rand_val_loss, rand_val_male_acc, rand_val_female_acc, rand_avg_score = calc_random_acc_score(args, model, test_dataloader)
             # train and test
             val_acc, val_loss, val_male_acc, val_female_acc, avg_score = calc_leak(args, model, train_dataloader, test_dataloader)
