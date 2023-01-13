@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=bert
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --time=04:00:00
+#SBATCH --mem=32000M
+#SBATCH --output=slurm_output_bert_seed0__capmodel_nic__calcannleak_True_test_%A.out
+
+
+cd $HOME/FACT_project/
+
+srun python3 bert_leakage.py --seed 0 --cap_model nic --calc_ann_leak True

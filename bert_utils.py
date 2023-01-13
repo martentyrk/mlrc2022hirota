@@ -101,7 +101,7 @@ def calc_random_acc_score(args, model, test_dataloader):
     model = model.to(device)
     optimizer = None
     epoch = None
-    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(args, test_dataloader, model, optimizer, False, print_every=500)
+    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(args, test_dataloader, model, optimizer, False, print_every=500, device=device)
 
     return val_acc, val_loss, val_male_acc, val_female_acc, avg_score
 
@@ -131,7 +131,7 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     # training
     for epoch in range(args.num_epochs):
         # train
-        train_loss, train_acc, _, _, _ = calc_leak_epoch_pass(args, train_dataloader, model, optimizer, True, print_every=500)
+        train_loss, train_acc, _, _, _ = calc_leak_epoch_pass(args, train_dataloader, model, optimizer, True, print_every=500, device=device)
         train_loss_arr.append(train_loss)
         train_acc_arr.append(train_acc)
         if epoch % 5 == 0:
@@ -145,19 +145,21 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     # validation
     if args.calc_mw_acc:
         val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(args, test_dataloader, model, optimizer, False, print_every=500)
-        print('val, {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
+        print('val, epoch: {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
         
-        print('val, {0}, val loss: {1:.2f}, Male val acc: {2:.2f}'.format(epoch, val_loss*100, val_male_acc *100))
-        print('val, {0}, val loss: {1:.2f}, Female val acc: {2:.2f}'.format(epoch, val_loss*100, val_female_acc *100))
+        if args.calc_mw_acc:
+            print('val, {0}, val loss: {1:.2f}, Male val acc: {2:.2f}'.format(epoch, val_loss*100, val_male_acc *100))
+            print('val, {0}, val loss: {1:.2f}, Feale val acc: {2:.2f}'.format(epoch, val_loss*100, val_female_acc *100))
 
         return val_acc, val_loss, val_male_acc, val_female_acc, avg_score
     
     elif args.calc_race_acc:
-        val_loss, val_acc, val_light_acc, val_dark_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500)
-        print('val, {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
+        val_loss, val_acc, val_light_acc, val_dark_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500, device=device)
+        print('val, epoch: {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
         
-        print('val, {0}, val loss: {1:.2f}, Light val acc: {2:.2f}'.format(epoch, val_loss*100, val_light_acc *100))
-        print('val, {0}, val loss: {1:.2f}, Dark val acc: {2:.2f}'.format(epoch, val_loss*100, val_dark_acc *100))
+        if args.calc_race_acc:
+            print('val, {0}, val loss: {1:.2f}, Light val acc: {2:.2f}'.format(epoch, val_loss*100, val_light_acc *100))
+            print('val, {0}, val loss: {1:.2f}, Dark val acc: {2:.2f}'.format(epoch, val_loss*100, val_dark_acc *100))
 
         return val_acc, val_loss, val_light_acc, val_dark_acc, avg_score
     
@@ -166,12 +168,11 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     #TODO: epoch is an unused variable in this function, I removed it and changed to args.
 # TODO: I would also maybe rename this to smth else since its the training or validation loop
 
-def calc_leak_epoch_pass(args, data_loader, model, optimizer, training, print_every):
+def calc_leak_epoch_pass(args, data_loader, model, optimizer, training, print_every, device):
     t_loss = 0.0
     n_processed = 0
     preds = list()
     truth = list()
-    device = get_device(args)
     
     if args.gender_or_race == 'gender':
         male_preds_all, female_preds_all = list(), list()

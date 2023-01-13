@@ -1,12 +1,26 @@
+import argparse
 import pickle
+import nltk
+import numpy as np
+import json
+import os
+import pprint
 #from pycocotools.coco import COCO
 #import pylab
 from nltk.tokenize import word_tokenize
+import random
 from io import open
+import sys
 import torch
+from torch import nn
 import torch.utils.data as data
+import torch.optim as optim
+import torch.nn.functional as F
+from tqdm import tqdm, trange
 
 
+
+        
 class BERT_ANN_leak_data(data.Dataset):
     def __init__(self, d_train, d_test, args, gender_task_mw_entries, gender_words, tokenizer, max_seq_length, split, caption_ind=None):
         self.task = args.task
@@ -103,7 +117,6 @@ class BERT_MODEL_leak_data(data.Dataset):
         img_id = entry['img_id']
 
         gender = entry['bb_gender']
-
         if gender == 'Male':
             gender_target = torch.tensor(0)
         elif gender == 'Female':
@@ -132,3 +145,4 @@ class BERT_MODEL_leak_data(data.Dataset):
         attention_mask = attention_mask.view(self.max_seq_length)
 
         return input_ids, attention_mask, token_type_ids, gender_target, img_id
+
