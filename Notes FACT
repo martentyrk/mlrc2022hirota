@@ -1,0 +1,5 @@
+Notes FACT
+
+- two classifiers are trained to measure LICD and LICM, can we really say that the difference is due to bias, or is it more that the classifier gives different result because of the training data?
+- Why not combine the two datasets and train one classifier on that, then calculate the LICD and LICM by testing on human annotated and generated caption respectively.
+- How is language encoder used ? Where? and how?
