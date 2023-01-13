@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score
 from transformers import AdamW
 
 
+
 #Was previously in file bert_leakage.py
 def make_train_test_split(args, gender_task_mw_entries):
     if args.balanced_data:
@@ -69,7 +70,18 @@ def make_train_test_split_race(args, gender_task_race_entries):
 
     return d_train, d_test
 
-
+def get_device(args):
+    torch.backends.cudnn.deterministic = True
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    n_gpu = torch.cuda.device_count()
+    print("device: {} n_gpu: {}".format(device, n_gpu))
+    if n_gpu > 0:
+        torch.cuda.manual_seed_all(args.seed)
+    
+    return device
 # Previously in bert_leakage.py, but they have a duplicate in race_bert_leakage 
 def binary_accuracy(preds, y):
     """
@@ -85,7 +97,8 @@ def binary_accuracy(preds, y):
 # Previously in bert_leakage.py, but they have a duplicate in race_bert_leakage 
 def calc_random_acc_score(args, model, test_dataloader):
     print("--- Random guess --")
-    model = model.cuda()
+    device = get_device(args)
+    model = model.to(device)
     optimizer = None
     epoch = None
     val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(args, test_dataloader, model, optimizer, False, print_every=500)
@@ -94,7 +107,9 @@ def calc_random_acc_score(args, model, test_dataloader):
 
 
 def calc_leak(args, model, train_dataloader, test_dataloader):
-    model = model.cuda()
+    device = get_device(args)
+    model = model.to(device)
+
     print("Num of Trainable Parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
     if args.optimizer == 'adam':
         optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay = 1e-5)
@@ -156,6 +171,7 @@ def calc_leak_epoch_pass(args, data_loader, model, optimizer, training, print_ev
     n_processed = 0
     preds = list()
     truth = list()
+    device = get_device(args)
     
     if args.gender_or_race == 'gender':
         male_preds_all, female_preds_all = list(), list()
@@ -174,11 +190,11 @@ def calc_leak_epoch_pass(args, data_loader, model, optimizer, training, print_ev
 
         cnt_data = 0
         for ind, (input_ids, attention_mask, token_type_ids, gender_target, img_id) in tqdm(enumerate(data_loader), leave=False): # images are not provided
-            input_ids = input_ids.cuda()
-            attention_mask = attention_mask.cuda()
-            token_type_ids = token_type_ids.cuda()
+            input_ids = input_ids.to(device)
+            attention_mask = attention_mask.to(device)
+            token_type_ids = token_type_ids.to(device)
 
-            gender_target = torch.squeeze(gender_target).cuda()
+            gender_target = torch.squeeze(gender_target).to(device)
             predictions = model(input_ids, attention_mask, token_type_ids)
             cnt_data += predictions.size(0)
 
@@ -279,11 +295,11 @@ def calc_leak_epoch_pass(args, data_loader, model, optimizer, training, print_ev
 
     cnt_data = 0
     for ind, (input_ids, attention_mask, token_type_ids, race_target, img_id) in tqdm(enumerate(data_loader), leave=False): # images are not provided
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        token_type_ids = token_type_ids.cuda()
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+        token_type_ids = token_type_ids.to(device)
 
-        race_target = torch.squeeze(race_target).cuda()
+        race_target = torch.squeeze(race_target).to(device)
         #if ind == 0:
         #    for j in range(30):
         #        print(model.tokenizer.convert_ids_to_tokens(input_ids[j]))
