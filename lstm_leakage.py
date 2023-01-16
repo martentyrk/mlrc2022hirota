@@ -303,9 +303,10 @@ def evaluate(model, iterator, criterion, batch_size, TEXT, args):
         
 
     if args.save_preds:
-        file_name = '%s_pred_entries_seed%s.pkl' %(args.cap_model, args.seed)
-        save_path = os.path.join('/bias-vl/LSTM', args.cap_model, file_name )
-        pickle.dump(all_pred_entries, open(save_path, 'wb'))
+        print('saving')
+        file_name = 'predictions.pkl'
+        #save_path = os.path.join('/bias-vl/LSTM', args.cap_model, file_name )
+        pickle.dump(all_pred_entries, open(file_name, 'wb'))
 
 
     return epoch_loss / len(iterator), epoch_acc / len(iterator), total_score / cnt_data, male_acc, female_acc, male_score_avg, female_score_avg
@@ -329,8 +330,6 @@ def main(args):
     print("device: {} n_gpu: {}".format(device, n_gpu))
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
-
-
     TEXT = data.Field(tokenize = 'spacy', tokenizer_language ='en_core_web_sm', include_lengths = True)
 
     LABEL = data.LabelField(dtype = torch.float)
