@@ -225,7 +225,7 @@ def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_e
                     male_score = 1 - pv
 
 
-                all_pred_entries.append({'image_id':imid, 'male_score':male_score, 'female_score':female_score, 'input_sent': text, 'target':target})
+                all_pred_entries.append({'image_id':imid, 'male_score':male_score, 'female_score':female_score, 'input_sent': text, 'target':target.cpu().detach()})
                 """
                 if pg == 0:
                     all_male_pred_values.append(pv)
