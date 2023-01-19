@@ -3,3 +3,17 @@ Notes FACT
 - two classifiers are trained to measure LICD and LICM, can we really say that the difference is due to bias, or is it more that the classifier gives different result because of the training data?
 - Why not combine the two datasets and train one classifier on that, then calculate the LICD and LICM by testing on human annotated and generated caption respectively.
 - How is language encoder used ? Where? and how?
+
+
+Attention explainability:
+- https://github.com/tpietruszka/ulmfit_attention
+- Above link is to attention included MLP, with visualisation to understand classification decision.
+
+- https://towardsdatascience.com/interpreting-the-prediction-of-bert-model-for-text-classification-5ab09f8ef074
+- Above link is integrated gradients, using Captum library for pytorch. This works for all pytorch models, and is a way to show importance of each individual feature to the prediction.
+
+
+--PROGRESS Attention explainability:
+	-TODO: verify CAPTUM results, currently (18/01) it seems wrong.
+	- question: Why do the authors use last_hidden_state[:,0,:] instead of _, cls_token = lang_model(args)? What is the purpose of this step? (model.py)
+
