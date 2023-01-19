@@ -125,7 +125,7 @@ def calc_random_acc_score(args, model, test_dataloader):
     model = model.cuda()
     optimizer = None
     epoch = None
-    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500)
+    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500, saving=False)
 
     return val_acc, val_loss, val_male_acc, val_female_acc, avg_score
 
@@ -154,7 +154,7 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     # training
     for epoch in range(args.num_epochs):
         # train
-        train_loss, train_acc, _, _, _ = calc_leak_epoch_pass(epoch, train_dataloader, model, optimizer, True, print_every=500)
+        train_loss, train_acc, _, _, _ = calc_leak_epoch_pass(epoch, train_dataloader, model, optimizer, True, print_every=500, saving=False)
         train_loss_arr.append(train_loss)
         train_acc_arr.append(train_acc)
         if epoch % 5 == 0:
@@ -165,7 +165,7 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     print('{0}: train acc: {1:2f}'.format(epoch, train_acc))
 
     # validation
-    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500)
+    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500, saving=True)
     print('val, {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
     if args.calc_mw_acc:
         print('val, {0}, val loss: {1:.2f}, Male val acc: {2:.2f}'.format(epoch, val_loss*100, val_male_acc *100))
@@ -174,7 +174,7 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     return val_acc, val_loss, val_male_acc, val_female_acc, avg_score
 
 
-def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_every):
+def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_every, saving=False):
     t_loss = 0.0
     n_processed = 0
     preds = list()
@@ -204,21 +204,34 @@ def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_e
         cnt_data += predictions.size(0)
 
         loss = F.cross_entropy(predictions, gender_target, reduction='mean')
-
-        if not training and args.store_topk_gender_pred:
+        
+        if not training and args.store_topk_gender_pred and saving:
+            all_pred_entries = []
             pred_values = np.amax(F.softmax(predictions, dim=1).cpu().detach().numpy(), axis=1).tolist()
             pred_genders = np.argmax(F.softmax(predictions, dim=1).cpu().detach().numpy(), axis=1)
-
-            for pv, pg, imid, ids in zip(pred_values, pred_genders, img_id, input_ids):
+            
+            for pv, pg, imid, ids, target in zip(pred_values, pred_genders, img_id, input_ids, gender_target):
                 tokens = model.tokenizer.convert_ids_to_tokens(ids)
                 text = model.tokenizer.convert_tokens_to_string(tokens)
                 text = text.replace('[PAD]', '')
+
+                if pg == 0:
+                    male_score = pv
+                    female_score = 1 - pv
+                else:
+                    female_score = pv
+                    male_score = 1 - pv
+
+
+                all_pred_entries.append({'image_id':imid, 'male_score':male_score, 'female_score':female_score, 'input_sent': text, 'target':target})
+                """
                 if pg == 0:
                     all_male_pred_values.append(pv)
                     all_male_inputs.append({'img_id': imid, 'text': text})
                 else:
                     all_female_pred_values.append(pv)
                     all_female_inputs.append({'img_id': imid, 'text': text})
+                """
 
         if not training and args.calc_score:
             pred_genders = np.argmax(F.softmax(predictions, dim=1).cpu().detach(), axis=1)
@@ -270,6 +283,14 @@ def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_e
             female_truth_all += female_target
 
     acc = accuracy_score(truth, preds)
+
+    if not training and args.store_topk_gender_pred and saving:
+        print('saving')
+        file_name = 'predictions/predictions_bert.pkl'
+        #save_path = os.path.join('/bias-vl/LSTM', args.cap_model, file_name )
+        pickle.dump(all_pred_entries, open(file_name, 'wb'))
+
+
 
     if args.calc_mw_acc and not training:
         male_acc = accuracy_score(male_truth_all, male_preds_all)
