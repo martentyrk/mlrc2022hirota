@@ -131,7 +131,7 @@ def calc_random_acc_score(args, model, test_dataloader):
 
 
 
-def calc_leak(args, model, train_dataloader, test_dataloader):
+def calc_leak(args, model, train_dataloader, test_dataloader, caption_ind=None):
     model = model.cuda()
     print("Num of Trainable Parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
     if args.optimizer == 'adam':
@@ -164,10 +164,12 @@ def calc_leak(args, model, train_dataloader, test_dataloader):
     print("Finish training")
     print('{0}: train acc: {1:2f}'.format(epoch, train_acc))
 
-    torch.save(model.state_dict(),'/saved_models/test.pt')
+    if (caption_ind == 0) or (caption_ind == 10):
+        saving_bool = True
+        #torch.save(model.state_dict(),'saved_models/test.pt')
     
     # validation
-    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500, saving=True)
+    val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500, saving=saving_bool)
     print('val, {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
     if args.calc_mw_acc:
         print('val, {0}, val loss: {1:.2f}, Male val acc: {2:.2f}'.format(epoch, val_loss*100, val_male_acc *100))
@@ -285,7 +287,7 @@ def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_e
             female_truth_all += female_target
 
     acc = accuracy_score(truth, preds)
-
+    
     if not training and args.store_topk_gender_pred and saving:
         print('saving')
         file_name = 'predictions/predictions_bert.pkl'
@@ -372,7 +374,7 @@ def main(args):
                 rand_acc_list.append(val_acc)
                 rand_score_list.append(avg_score)
                 # train and test
-                val_acc, val_loss, val_male_acc, val_female_acc, avg_score = calc_leak(args, model, train_dataloader, test_dataloader)
+                val_acc, val_loss, val_male_acc, val_female_acc, avg_score = calc_leak(args, model, train_dataloader, test_dataloader, caption_ind)
                 val_acc_list.append(val_acc)
                 male_acc_list.append(val_male_acc)
                 female_acc_list.append(val_female_acc)
@@ -407,7 +409,7 @@ def main(args):
             # calculate random predictions
             rand_val_acc, rand_val_loss, rand_val_male_acc, rand_val_female_acc, rand_avg_score = calc_random_acc_score(args, model, test_dataloader)
             # train and test
-            val_acc, val_loss, val_male_acc, val_female_acc, avg_score = calc_leak(args, model, train_dataloader, test_dataloader)
+            val_acc, val_loss, val_male_acc, val_female_acc, avg_score = calc_leak(args, model, train_dataloader, test_dataloader, 10)
 
             print('########### Reluts ##########')
             print(f'LIC score (LIC_M): {avg_score*100:.2f}%')
