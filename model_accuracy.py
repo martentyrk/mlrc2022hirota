@@ -14,7 +14,9 @@ import json
 from tqdm import tqdm, trange
 from operator import itemgetter
 from nltk.translate.meteor_score import meteor_score
-import pandas as pd
+from rouge import Rouge
+from nltk.translate.bleu_score import sentence_bleu
+from pycocoevalcap.cider.cider import Cider
 
 
 def get_parser():
@@ -44,31 +46,40 @@ def get_parser():
 
 def calculate_meteor(annotations, model_captions):
     all_scores = []
-    total_captions = len(model_captions)
     
-    for i in range(total_captions):
-        all_scores.append(meteor_score(annotations[i], model_captions[i]))
+    assert(annotations.keys() == model_captions.keys())
+    imgIds = annotations.keys()
+    for id in imgIds:
+        all_scores.append(meteor_score(annotations[id], model_captions[id][0]))
+    
+    return sum(all_scores) / len(all_scores)
+
+def calculate_bleu(annotations, model_captions):
+    all_scores = []
+    
+    assert(annotations.keys() == model_captions.keys())
+    imgIds = annotations.keys()
+    
+    for id in imgIds:
+        all_scores.append(sentence_bleu(annotations[id], model_captions[id][0], weights=(0.25, 0.25, 0.25, 0.25)))
+    
     
     return sum(all_scores) / len(all_scores)
 
 def prepare_human_ann(human_annotations):
-    all_annotations = []
+    all_annotations = {}
         
     for entry in human_annotations:
-        singe_image_captions = []
-        for capt_ind in range(5):
-            singe_image_captions.append(entry[capt_ind])
-            
-        all_annotations.append(singe_image_captions)
-
+        all_annotations[entry['img_id']] = entry['caption_list']
+    
     return all_annotations
 
-def prepare_model_capt(model_captions):
-    all_captions = []
+def prepare_model_captions(model_captions):
+    all_captions = {}
     
     for entry in model_captions:
-        all_captions.append(word_tokenize(entry))
-       
+        all_captions[entry['img_id']] = [entry['pred']]
+    
     
     return all_captions
     
@@ -105,15 +116,15 @@ def main(args):
     elif args.cap_model == 'nic_plus':
         selected_cap_gender_entries = pickle.load(open('bias_data/Woman-Snowboard/gender_val_baselineft_cap_mw_entries.pkl', 'rb'))
 
-    df_humancaptions = pd.DataFrame(gender_human_annotations, columns=['img_id', 'caption_list'])
-    df_modelcaptions = pd.DataFrame(selected_cap_gender_entries, columns=['img_id', 'pred'])
+    #df_humancaptions = pd.DataFrame(gender_human_annotations, columns=['img_id', 'caption_list'])
+    #df_modelcaptions = pd.DataFrame(selected_cap_gender_entries, columns=['img_id', 'pred'])
     
-    df_humancaptions = df_humancaptions.sort_values('img_id')
-    df_modelcaptions = df_modelcaptions.sort_values('img_id')
+    #df_humancaptions = df_humancaptions.sort_values('img_id')
+    #df_modelcaptions = df_modelcaptions.sort_values('img_id')
     
 
-    sorted_human_captions = list(df_humancaptions['caption_list'])
-    sorted_model_captions = list(df_modelcaptions['pred'])
+    #sorted_human_captions = list(df_humancaptions['caption_list'])
+    #sorted_model_captions = list(df_modelcaptions['pred'])
     
     all_scores = {
         'meteor': 0,
@@ -121,13 +132,24 @@ def main(args):
         'bleu4': 0,
         'cider': 0
     }
+    dict_model_capt = prepare_model_captions(selected_cap_gender_entries)
+    dict_human_ann = prepare_human_ann(gender_human_annotations)
         
-    meteor_score = calculate_meteor(sorted_human_captions, sorted_model_captions)
+    #METEOR
+    all_scores['meteor'] = calculate_meteor(dict_human_ann, dict_model_capt)
     
-    all_scores['meteor'] = meteor_score
+    #ROUGE-L
+    all_scores['rougel'] = Rouge().compute_score(dict_human_ann, dict_model_capt)
+    
+    #BLEU-4
+    all_scores['bleu4'] = calculate_bleu(dict_human_ann, dict_model_capt)
+    
+    #CIDER
+    all_scores['cider'], _ = Cider().compute_score(dict_human_ann, dict_model_capt)
+    
     
     print(all_scores)
-            
+
         
 
 if __name__ == "__main__":
