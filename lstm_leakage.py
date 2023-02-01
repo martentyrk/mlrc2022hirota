@@ -191,10 +191,11 @@ def make_train_test_split_sorted(args, gender_task_mw_entries):
                 female_entries.append(entry)
             else:
                 male_entries.append(entry)
-        print(len(male_entries))
+
+        #print(len(male_entries))
         each_test_sample_num = round(len(female_entries) * args.test_ratio)
         each_train_sample_num = len(female_entries) - each_test_sample_num
-        print(each_test_sample_num)
+        #print(each_test_sample_num)
         male_train_entries = [male_entries.pop(random.randrange(len(male_entries))) for _ in range(each_train_sample_num)]
         female_train_entries = [female_entries.pop(random.randrange(len(female_entries))) for _ in range(each_train_sample_num)]
         male_test_entries = [male_entries.pop(random.randrange(len(male_entries))) for _ in range(each_test_sample_num)]

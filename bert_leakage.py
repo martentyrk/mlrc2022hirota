@@ -5,43 +5,26 @@ import re
 import pickle
 import random
 import csv
-from nltk import word_tokenize
 import nltk
 nltk.download('punkt')
 import time
 
 import argparse
-import os
-import pprint
 import numpy as np
-from nltk.tokenize import word_tokenize
 from io import open
-import sys
-import json
 import pickle
-from torch import nn
 import torch.optim as optim
 import pandas as pd
 import torch.nn.functional as F
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from operator import itemgetter
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import average_precision_score
 from sklearn.metrics import accuracy_score
-import transformers as tf
 from transformers import BertTokenizer
-from transformers import PYTORCH_PRETRAINED_BERT_CACHE
-from transformers import BertConfig, WEIGHTS_NAME, CONFIG_NAME
-from transformers import AdamW, get_linear_schedule_with_warmup
-
-import torch.utils.data as data
-from transformers import BertModel
-from transformers import BertPreTrainedModel
+from transformers import AdamW
 
 from model import BERT_GenderClassifier
 from bias_dataset import BERT_ANN_leak_data, BERT_MODEL_leak_data
-
-from string import punctuation
 
 def get_parser():
     parser = argparse.ArgumentParser()

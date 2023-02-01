@@ -2,32 +2,22 @@ import torchtext
 import torch
 import csv
 import spacy
-import re
 from torchtext.legacy import data
 import pickle
 import random
 from nltk import word_tokenize
 import nltk
 nltk.download('punkt')
-import time
 
 import argparse
 import numpy as np
 import pandas as pd
-import json
 import os
-import pprint
 from nltk.tokenize import word_tokenize
 from io import open
-import sys
 from torch import nn
 import torch.optim as optim
-import torch.nn.functional as F
-from tqdm import tqdm, trange
 from operator import itemgetter
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import average_precision_score
-from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 
 
@@ -162,7 +152,10 @@ def make_train_test_split(args, gender_task_race_entries):
 
     return d_train, d_test
 
-def make_train_test_split_race_good(args, gender_task_race_entries):
+
+# This train test split function will first sort the entries giving an identical split
+# amongst all models. This is good if one has to compare the same image caption on all models.
+def make_train_test_split_race_sorted(args, gender_task_race_entries):
 
     if args.calc_model_leak: 
         df_modelcaptions = pd.DataFrame(gender_task_race_entries, columns=['img_id', 'pred', 'bb_skin' ])
@@ -377,7 +370,7 @@ def main(args):
         if args.task == 'captioning':
             print('-- task is Captioning --')
             #d_train, d_test = make_train_test_split(args, race_val_obj_cap_entries)
-            d_train, d_test = make_train_test_split_race_good(args, race_val_obj_cap_entries)
+            d_train, d_test = make_train_test_split_race_sorted(args, race_val_obj_cap_entries)
             val_acc_list = []
             light_acc_list, dark_acc_list = [], []
             score_list = []
@@ -539,7 +532,7 @@ def main(args):
         if args.task == 'captioning':
             print('--- task is Captioning ---')
             #d_train, d_test = make_train_test_split(args, selected_cap_race_entries)
-            d_train, d_test = make_train_test_split_race_good(args, selected_cap_race_entries)
+            d_train, d_test = make_train_test_split_race_sorted(args, selected_cap_race_entries)
             with open('bias_data/race_train.csv', 'w') as f:
                 writer = csv.writer(f)
                 for i, entry in enumerate(d_train):
