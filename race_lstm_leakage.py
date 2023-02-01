@@ -162,46 +162,36 @@ def make_train_test_split(args, gender_task_race_entries):
 
     return d_train, d_test
 
-def make_train_test_split_good(args, gender_task_mw_entries, caption_model=False):
-    #random.seed(0)
-    #np.random.seed(0)
-    #torch.backends.cudnn.deterministic = True
-    #torch.manual_seed(0)
-    
-    if caption_model: 
-        df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'pred', 'bb_skin' ])
+def make_train_test_split_race_good(args, gender_task_race_entries):
+
+    if args.calc_model_leak: 
+        df_modelcaptions = pd.DataFrame(gender_task_race_entries, columns=['img_id', 'pred', 'bb_skin' ])
     else:
-        df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'caption_list', 'bb_skin'])
-    gender_task_mw_entries = df_modelcaptions.sort_values(by='img_id').to_dict(orient='records')
-    #print(gender_task_mw_entries[:5])
+        df_modelcaptions = pd.DataFrame(gender_task_race_entries, columns=['img_id', 'caption_list', 'bb_skin'])
+    gender_task_race_entries = df_modelcaptions.sort_values(by='img_id').to_dict(orient='records')
     if args.balanced_data:
-        male_entries, female_entries = [], []
-        #for _, entry in gender_task_mw_entries.iterrows():
-        for entry in gender_task_mw_entries:
-            #print(entry['img_id'])
+        light_entries, dark_entries = [], []
+        for entry in gender_task_race_entries:
             if entry['bb_skin'] == 'Light':
-                female_entries.append(entry)
+                light_entries.append(entry)
             elif entry['bb_skin'] == 'Dark':
-                male_entries.append(entry)
-        print(len(male_entries))
-        each_test_sample_num = round(len(female_entries) * args.test_ratio)
-        each_train_sample_num = len(female_entries) - each_test_sample_num
-        print(each_test_sample_num)
-        male_train_entries = [male_entries.pop(random.randrange(len(male_entries))) for _ in range(each_train_sample_num)]
-        female_train_entries = [female_entries.pop(random.randrange(len(female_entries))) for _ in range(each_train_sample_num)]
-        male_test_entries = [male_entries.pop(random.randrange(len(male_entries))) for _ in range(each_test_sample_num)]
-        female_test_entries = [female_entries.pop(random.randrange(len(female_entries))) for _ in range(each_test_sample_num)]
-        d_train = male_train_entries + female_train_entries
-        d_test = male_test_entries + female_test_entries
+                dark_entries.append(entry)
+        #print(len(female_entries))
+        each_test_sample_num = round(len(dark_entries) * args.test_ratio)
+        each_train_sample_num = len(dark_entries) - each_test_sample_num
+
+        light_train_entries = [light_entries.pop(random.randrange(len(light_entries))) for _ in range(each_train_sample_num)]
+        dark_train_entries = [dark_entries.pop(random.randrange(len(dark_entries))) for _ in range(each_train_sample_num)]
+        light_test_entries = [light_entries.pop(random.randrange(len(light_entries))) for _ in range(each_test_sample_num)]
+        dark_test_entries = [dark_entries.pop(random.randrange(len(dark_entries))) for _ in range(each_test_sample_num)]
+        d_train = light_train_entries + dark_train_entries
+        d_test = light_test_entries + dark_test_entries
         random.shuffle(d_train)
         random.shuffle(d_test)
-        print('#train : #test = ', len(d_train), len(d_test))
+        print('#train : #test =', len(d_train), len(d_test))
     else:
-        #print(gender_task_mw_entries[:5])
-        d_train, d_test = train_test_split(gender_task_mw_entries, test_size=args.test_ratio, random_state=args.seed)
-                                   #stratify=[entry['bb_gender'] for entry in gender_task_mw_entries])
-        print('#train : #test = ', len(d_train), len(d_test))
-    print(d_test[:3])
+        print('Balance data')
+
     return d_train, d_test
 
 
@@ -387,8 +377,7 @@ def main(args):
         if args.task == 'captioning':
             print('-- task is Captioning --')
             #d_train, d_test = make_train_test_split(args, race_val_obj_cap_entries)
-            d_train, d_test = make_train_test_split_good(args, race_val_obj_cap_entries, caption_model=False)
-            
+            d_train, d_test = make_train_test_split_race_good(args, race_val_obj_cap_entries)
             val_acc_list = []
             light_acc_list, dark_acc_list = [], []
             score_list = []
@@ -534,7 +523,7 @@ def main(args):
             dark_avg_acc = sum(dark_acc_list) / len(dark_acc_list)
             light_avg_acc = sum(light_acc_list) / len(light_acc_list)
             avg_score = sum(score_list) / len(score_list)
-
+            torch.save(model.state_dict(),'saved_models/race_lstmhumanepoch20seed0.pt')
             print('########## Results ##########')
             print(f"LIC score (LIC_D): {avg_score*100:.2f}%")
             #print(f"\t Dark Accuracy: {dark_avg_acc*100:.2f}%")
@@ -550,7 +539,7 @@ def main(args):
         if args.task == 'captioning':
             print('--- task is Captioning ---')
             #d_train, d_test = make_train_test_split(args, selected_cap_race_entries)
-            d_train, d_test = make_train_test_split_good(args, selected_cap_race_entries, caption_model=True)
+            d_train, d_test = make_train_test_split_race_good(args, selected_cap_race_entries)
             with open('bias_data/race_train.csv', 'w') as f:
                 writer = csv.writer(f)
                 for i, entry in enumerate(d_train):
@@ -690,6 +679,8 @@ def main(args):
             train_loss, train_acc, train_proc = train(model, train_iterator, optimizer, criterion, train_proc)
 
         valid_loss, valid_acc, avg_score, light_acc, dark_acc = evaluate(model, test_iterator, criterion, args.batch_size)
+
+        torch.save(model.state_dict(),'saved_models/race_lstmnic_eq_epoch20seed0.pt')
         print('########## Results ##########')
         print(f'LIC score (LIC_M): {avg_score*100:.2f}%')
         #print(f'\t Light. Acc: {light_acc*100:.2f}%')

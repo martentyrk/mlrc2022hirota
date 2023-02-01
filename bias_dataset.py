@@ -145,4 +145,3 @@ class BERT_MODEL_leak_data(data.Dataset):
         attention_mask = attention_mask.view(self.max_seq_length)
 
         return input_ids, attention_mask, token_type_ids, gender_target, img_id
-

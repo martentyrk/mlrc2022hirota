@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --ntasks=1
+#SBATCH --job-name=slurm_output_lstm_seed12__capmodel_updn__calcmodelleak_True
+#SBATCH --cpus-per-task=3
+#SBATCH --time=00:25:00
+#SBATCH --mem=32000M
+#SBATCH --output=slurm_visualise_nicplus0_ns.out
+
+# Your job starts in the directory where you call sbatch
+cd $HOME/FACT_project/
+# Activate your environment
+
+
+#srun python3 lstm_remove_duplicates.py --seed 789 --cap_model updn --calc_model_leak True --remove_duplicates True
+
+#srun python3 lstm_leakage.py --seed 500 --cap_model nic_equalizer --calc_model_leak True
+#srun python3 lstm_leakage.py --seed 0 --cap_model nic_equalizer --calc_ann_leak True
+
+srun python3 lstm_leakage_visualize.py --seed 0 --cap_model nic_plus --calc_model_leak True

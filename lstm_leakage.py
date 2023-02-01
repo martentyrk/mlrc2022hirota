@@ -2,7 +2,6 @@ import torchtext
 import torch
 import csv
 import spacy
-import re
 from torchtext.legacy import data
 import pickle
 import random
@@ -14,19 +13,12 @@ import argparse
 import pandas as pd
 import numpy as np
 import os
-import pprint
 from nltk.tokenize import word_tokenize
 from io import open
-import sys
-import json
 from torch import nn
 import torch.optim as optim
-import torch.nn.functional as F
-from tqdm import tqdm, trange
 from operator import itemgetter
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import average_precision_score
-from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 
 
@@ -179,13 +171,12 @@ def binary_accuracy(preds, y):
     acc = correct.sum() / len(correct)
     return acc
 
-def make_train_test_split_good(args, gender_task_mw_entries, caption_model=False):
-    #random.seed(0)
-    #np.random.seed(0)
-    #torch.backends.cudnn.deterministic = True
-    #torch.manual_seed(0)
-    
-    if caption_model: 
+
+# This train test split function will first sort the entries giving an identical split
+# amongst all models. This is good if one has to compare the same image caption on all models.
+def make_train_test_split_sorted(args, gender_task_mw_entries):
+        
+    if args.calc_model_leak: 
         df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'pred', 'bb_gender' ])
     else:
         df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'caption_list', 'bb_gender'])

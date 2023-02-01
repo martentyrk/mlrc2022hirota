@@ -108,13 +108,15 @@ def make_train_test_split(args, gender_task_mw_entries):
 
     return d_train, d_test
 
-def make_train_test_split_good(gender_task_mw_entries, caption_model=False):
+# This train test split function will first sort the entries giving an identical split
+# amongst all models. This is good if one has to compare the same image caption on all models.
+def make_train_test_split_sorted(args, gender_task_mw_entries):
     #random.seed(0)
     #np.random.seed(0)
     #torch.backends.cudnn.deterministic = True
     #torch.manual_seed(0)
     
-    if caption_model: 
+    if args.calc_model_leak: 
         df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'pred', 'bb_gender' ])
     else:
         df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'caption_list', 'bb_gender'])
@@ -206,11 +208,11 @@ def calc_leak(args, model, train_dataloader, test_dataloader, caption_ind=None):
 
     print("Finish training")
     print('{0}: train acc: {1:2f}'.format(epoch, train_acc))
-
-    if (caption_ind == 0) or (caption_ind == 10):
+    saving_bool = False
+    if (caption_ind == 4) or (caption_ind == 10):
         saving_bool = True
-        torch.save(model.state_dict(),'saved_models/test_human_newsplit.pt')
-    
+        torch.save(model.state_dict(),'saved_models/nic_plus_luyang.pt')
+  
     # validation
     val_loss, val_acc, val_male_acc, val_female_acc, avg_score = calc_leak_epoch_pass(epoch, test_dataloader, model, optimizer, False, print_every=500, saving=saving_bool)
     print('val, {0}, val loss: {1:.2f}, val acc: {2:.2f}'.format(epoch, val_loss*100, val_acc *100))
@@ -333,7 +335,7 @@ def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_e
     
     if not training and args.store_topk_gender_pred and saving:
         print('saving')
-        file_name = 'predictions/predictions_human_testnew.pkl'
+        file_name = 'predictions/predictions_nic_plus_luyang.pkl'
         #save_path = os.path.join('/bias-vl/LSTM', args.cap_model, file_name )
         pickle.dump(all_pred_entries, open(file_name, 'wb'))
 
@@ -344,7 +346,7 @@ def calc_leak_epoch_pass(epoch, data_loader, model, optimizer, training, print_e
         female_acc = accuracy_score(female_truth_all, female_preds_all)
     else:
         male_acc, female_acc = None, None
-
+    
     return t_loss / n_processed, acc, male_acc, female_acc, total_score / cnt_data
 
 
@@ -359,6 +361,8 @@ def main(args):
     print("device: {} n_gpu: {}".format(device, n_gpu))
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
+        
+    start_time = time.time()
 
     gender_obj_cap_mw_entries = pickle.load(open('bias_data/Human_Ann/gender_obj_cap_mw_entries.pkl', 'rb')) # Human captions
 
@@ -398,7 +402,7 @@ def main(args):
         if args.task == 'captioning':
             print('-- Task is Captioning --')
             #d_train, d_test = make_train_test_split(args, gender_obj_cap_mw_entries)
-            d_train, d_test = make_train_test_split_good(args, gender_obj_cap_mw_entries, caption_model=False)
+            d_train, d_test = make_train_test_split_sorted(args, gender_obj_cap_mw_entries)
             val_acc_list = []
             score_list = []
             male_acc_list, female_acc_list = [], []
@@ -442,7 +446,7 @@ def main(args):
         if args.task == 'captioning':
             print('-- Task is Captioning --')
             #d_train, d_test = make_train_test_split(args, selected_cap_gender_entries)
-            d_train, d_test = make_train_test_split_good(args, selected_cap_gender_entries, caption_model=True)
+            d_train, d_test = make_train_test_split_sorted(args, selected_cap_gender_entries)
             trainMODELCAPobject = BERT_MODEL_leak_data(d_train, d_test, args, selected_cap_gender_entries, gender_words, tokenizer,
                                                 args.max_seq_length, split='train')
             testMODELCAPobject = BERT_MODEL_leak_data(d_train, d_test, args, selected_cap_gender_entries, gender_words, tokenizer,
@@ -461,8 +465,10 @@ def main(args):
             #print(f'\t Male. Acc: {val_male_acc*100:.2f}%')
             #print(f'\t Female. Acc: {val_female_acc*100:.2f}%')
             print('#############################')
-
-
+            
+    end_time = time.time()
+        
+    print('####### TIME: ', end_time - start_time ,' seconds ###########')
 
 
 if __name__ == "__main__":
