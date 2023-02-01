@@ -11,6 +11,7 @@ import nltk
 nltk.download('punkt')
 import time
 import argparse
+import pandas as pd
 import numpy as np
 import os
 import pprint
@@ -45,6 +46,7 @@ def get_parser():
     parser.add_argument("--save_model_vocab", default=False, type=bool)
     parser.add_argument("--align_vocab", default=True, type=bool)
     parser.add_argument("--mask_bias_source", default='', type=str, help='obj or person or both or none')
+    parser.add_argument("--return_model", default=False, type=bool)
 
     parser.add_argument("--batch_size", default=64, type=int)
     parser.add_argument("--seed", default=0, type=int)
@@ -111,6 +113,54 @@ class RNN(nn.Module):
         #hidden = [batch size, hid dim * num directions]
             
         return self.fc(hidden), embedded
+    
+    
+class RNNModified(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, n_layers, 
+                 bidirectional, dropout, pad_idx):
+        
+        super().__init__()
+        
+        self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx = pad_idx)
+        
+        self.rnn = nn.LSTM(embedding_dim, 
+                           hidden_dim, 
+                           num_layers=n_layers, 
+                           bidirectional=bidirectional, 
+                           dropout=dropout)
+        
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
+        
+        self.dropout = nn.Dropout(dropout)
+        
+    def forward(self, text, text_lengths):
+        
+        #text: [sent len, batch size]
+        
+        embedded = self.dropout(self.embedding(text)) #[sent len, batch size, emb dim]
+        
+        # pack sequence
+        # lengths need to be on CPU!
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths.to('cpu'), batch_first=True)
+        
+        packed_output, (hidden, cell) = self.rnn(packed_embedded)
+        
+        #unpack sequence
+        output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output)
+        #output: [sent len, batch size, hid dim * num directions]
+        #output over padding tokens are zero tensors
+        
+        #hidden = [num layers * num directions, batch size, hid dim]
+        #cell = [num layers * num directions, batch size, hid dim]
+        
+        #concat the final forward (hidden[-2,:,:]) and backward (hidden[-1,:,:]) hidden layers
+        #and apply dropout
+        
+        hidden = self.dropout(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1))
+                
+        #hidden = [batch size, hid dim * num directions]
+            
+        return self.fc(hidden), embedded
 
 
 
@@ -128,6 +178,49 @@ def binary_accuracy(preds, y):
     correct = (rounded_preds == y).float() #convert into float for division
     acc = correct.sum() / len(correct)
     return acc
+
+def make_train_test_split_good(args, gender_task_mw_entries, caption_model=False):
+    #random.seed(0)
+    #np.random.seed(0)
+    #torch.backends.cudnn.deterministic = True
+    #torch.manual_seed(0)
+    
+    if caption_model: 
+        df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'pred', 'bb_gender' ])
+    else:
+        df_modelcaptions = pd.DataFrame(gender_task_mw_entries, columns=['img_id', 'caption_list', 'bb_gender'])
+    gender_task_mw_entries = df_modelcaptions.sort_values(by='img_id').to_dict(orient='records')
+    #print(gender_task_mw_entries[:5])
+    if args.balanced_data:
+        male_entries, female_entries = [], []
+        #for _, entry in gender_task_mw_entries.iterrows():
+        for entry in gender_task_mw_entries:
+            #print(entry['img_id'])
+            if entry['bb_gender'] == 'Female':
+                female_entries.append(entry)
+            else:
+                male_entries.append(entry)
+        print(len(male_entries))
+        each_test_sample_num = round(len(female_entries) * args.test_ratio)
+        each_train_sample_num = len(female_entries) - each_test_sample_num
+        print(each_test_sample_num)
+        male_train_entries = [male_entries.pop(random.randrange(len(male_entries))) for _ in range(each_train_sample_num)]
+        female_train_entries = [female_entries.pop(random.randrange(len(female_entries))) for _ in range(each_train_sample_num)]
+        male_test_entries = [male_entries.pop(random.randrange(len(male_entries))) for _ in range(each_test_sample_num)]
+        female_test_entries = [female_entries.pop(random.randrange(len(female_entries))) for _ in range(each_test_sample_num)]
+        d_train = male_train_entries + female_train_entries
+        d_test = male_test_entries + female_test_entries
+        random.shuffle(d_train)
+        random.shuffle(d_test)
+        print('#train : #test = ', len(d_train), len(d_test))
+    else:
+        #print(gender_task_mw_entries[:5])
+        d_train, d_test = train_test_split(gender_task_mw_entries, test_size=args.test_ratio, random_state=args.seed)
+                                   #stratify=[entry['bb_gender'] for entry in gender_task_mw_entries])
+        print('#train : #test = ', len(d_train), len(d_test))
+
+    return d_train, d_test
+
 
 
 def make_train_test_split(args, gender_task_mw_entries):
@@ -267,12 +360,13 @@ def evaluate(model, iterator, criterion, batch_size, TEXT, args):
                 female_preds_all += female_pred
                 female_scores_all += female_scores
                 female_truth_all += female_target
+                label_list = batch.label.to(torch.int32).cpu().numpy().tolist()
                 
             if args.save_preds:
                 probs = m(predictions).cpu() #[batch_size]
                 pred_genders = (probs >= 0.5000).int()
 
-                for i, (imid, fs, pg) in enumerate(zip(batch.imid, probs, pred_genders)):
+                for i, (imid, fs, pg, label) in enumerate(zip(batch.imid, probs, pred_genders, label_list)):
                     image_id = imid.item()
                     female_score = fs.item()
                     male_score = 1 - female_score
@@ -284,7 +378,7 @@ def evaluate(model, iterator, criterion, batch_size, TEXT, args):
                         sent_list.append(word)
                     sent = ' '.join([c for c in sent_list])
 
-                    all_pred_entries.append({'image_id':image_id, 'male_score':male_score, 'female_score':female_score, 'input_sent': sent})
+                    all_pred_entries.append({'image_id':image_id, 'male_score':male_score, 'female_score':female_score, 'input_sent': sent, 'true_label': label})
 
 
     if calc_mw_acc:
@@ -304,7 +398,7 @@ def evaluate(model, iterator, criterion, batch_size, TEXT, args):
 
     if args.save_preds:
         print('saving')
-        file_name = 'predictions.pkl'
+        file_name = 'predictions/lstm_preds/predictions_model_nic_model_marten.pkl'
         #save_path = os.path.join('/bias-vl/LSTM', args.cap_model, file_name )
         pickle.dump(all_pred_entries, open(file_name, 'wb'))
 
@@ -314,12 +408,12 @@ def evaluate(model, iterator, criterion, batch_size, TEXT, args):
 
 
 def main(args):
-    if os.path.exists('bias_data/train.csv'):
-        os.remove('bias_data/train.csv')
-    if os.path.exists('bias_data/val.csv'):
-        os.remove('bias_data/val.csv')
-    if os.path.exists('bias_data/test.csv'):
-        os.remove('bias_data/test.csv')
+    if os.path.exists('bias_data/lstm_train.csv'):
+        os.remove('bias_data/lstm_train.csv')
+    if os.path.exists('bias_data/lstm_val.csv'):
+        os.remove('bias_data/lstm_val.csv')
+    if os.path.exists('bias_data/lstm_test.csv'):
+        os.remove('bias_data/lstm_test.csv')
 
     torch.backends.cudnn.deterministic = True
     random.seed(args.seed)
@@ -330,6 +424,8 @@ def main(args):
     print("device: {} n_gpu: {}".format(device, n_gpu))
     if n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
+        
+    start_time = time.time()
     TEXT = data.Field(tokenize = 'spacy', tokenizer_language ='en_core_web_sm', include_lengths = True)
 
     LABEL = data.LabelField(dtype = torch.float)
@@ -408,7 +504,7 @@ def main(args):
 
             for cap_ind in range(5):
                 if args.mask_gender_words:
-                    with open('bias_data/train.csv', 'w') as f:
+                    with open('bias_data/lstm_train.csv', 'w') as f:
                         writer = csv.writer(f)
                         for i, entry in enumerate(d_train):
                             if entry['bb_gender'] == 'Male':
@@ -434,7 +530,7 @@ def main(args):
 
                             writer.writerow([new_sent.strip(), gender, entry['img_id']])
 
-                    with open('bias_data/test.csv', 'w') as f:
+                    with open('bias_data/lstm_test.csv', 'w') as f:
                         writer = csv.writer(f)
                         for i, entry in enumerate(d_test):
                             if entry['bb_gender'] == 'Male':
@@ -475,7 +571,7 @@ def main(args):
                     ('imid', IMID)
                     ]
 
-                train_data, test_data = torchtext.legacy.data.TabularDataset.splits(path='bias_data/',train='train.csv', test='test.csv',
+                train_data, test_data = torchtext.legacy.data.TabularDataset.splits(path='bias_data/',train='lstm_train.csv', test='lstm_test.csv',
                                                                             format='csv', fields=train_val_fields)
 
                 MAX_VOCAB_SIZE = 25000
@@ -494,6 +590,21 @@ def main(args):
                                                             sort_key=lambda x: len(x.prediction), # on what attribute the text should be sorted
                                                             sort_within_batch = True,
                                                             device = device)
+
+                train_iterator_captum, test_iterator_captum = data.BucketIterator.splits(
+                                                            (train_data, test_data), 
+                                                            batch_size = 1,
+                                                            sort_key=lambda x: len(x.prediction), # on what attribute the text should be sorted
+                                                            sort_within_batch = True,
+                                                            device = device)
+        
+        
+                model_dict = {}
+            
+                for b in test_iterator_captum:
+                    model_dict[b.imid.item()] = [b.prediction, b.label]
+
+                
                 INPUT_DIM = len(TEXT.vocab)
                 EMBEDDING_DIM = 100
                 HIDDEN_DIM = 256
@@ -550,13 +661,20 @@ def main(args):
             avg_score = sum(score_list) / len(score_list)
             male_avg_score = sum(male_score_list) / len(male_score_list)
             female_avg_score = sum(female_score_list) / len(female_score_list)
-
+            torch.save(model.state_dict(),'saved_models/lstm_models/model_nic_human.pt')
             print('########## Results ##########')
             print(f"LIC score (LIC_D): {avg_score*100:.2f}%")
             #print(f"\t Female score: {female_avg_score*100:.2f}%")
             #print(f"\t Male score: {male_avg_score*100:.2f}%")
             #print('!Random avg score', score_list, sum(rand_score_list) / len(rand_score_list))
             print('#############################')
+            
+            if args.return_model:
+                new_model = RNNModified(INPUT_DIM, EMBEDDING_DIM, HIDDEN_DIM, OUTPUT_DIM, N_LAYERS, BIDIRECTIONAL, DROPOUT, PAD_IDX)
+                new_model.load_state_dict(model.state_dict())
+                new_model = new_model.to(device)
+                
+                return new_model, model_dict, TEXT, LABEL, IMID
 
     ########### MODEL LIC score ###########
     if args.calc_model_leak:
@@ -569,7 +687,7 @@ def main(args):
             #!!! for qualitative !!!
             flag_imid_ = 0
             if args.mask_gender_words:
-                with open('bias_data/train.csv', 'w') as f:
+                with open('bias_data/lstm_train.csv', 'w') as f:
                     writer = csv.writer(f)
                     for i, entry in enumerate(d_train):
                         if entry['bb_gender'] == 'Male':
@@ -589,7 +707,7 @@ def main(args):
 
                         writer.writerow([new_sent.strip(), gender, entry['img_id']])
 
-                with open('bias_data/test.csv', 'w') as f:
+                with open('bias_data/lstm_test.csv', 'w') as f:
                     writer = csv.writer(f)
                     test_imid_list = []
                     for i, entry in enumerate(d_test):
@@ -640,7 +758,7 @@ def main(args):
             ('imid', IMID)
         ]
 
-        train_data, test_data = torchtext.legacy.data.TabularDataset.splits(path='bias_data/',train='train.csv', test='test.csv',
+        train_data, test_data = torchtext.legacy.data.TabularDataset.splits(path='bias_data/',train='lstm_train.csv', test='lstm_test.csv',
                                                                             format='csv', fields=train_val_fields)
 
         #ex = train_data[1]
@@ -673,6 +791,20 @@ def main(args):
                                                             sort_key=lambda x: len(x.prediction), # on what attribute the text should be sorted
                                                             sort_within_batch = True,
                                                             device = device)
+        
+        
+        train_iterator_captum, test_iterator_captum = data.BucketIterator.splits(
+                                                            (train_data, test_data), 
+                                                            batch_size = 1,
+                                                            sort_key=lambda x: len(x.prediction), # on what attribute the text should be sorted
+                                                            sort_within_batch = True,
+                                                            device = device)
+        
+        model_dict = {}
+        
+        for b in test_iterator_captum:
+            model_dict[b.imid.item()] = [b.prediction, b.label]
+                    
         INPUT_DIM = len(TEXT.vocab)
         EMBEDDING_DIM = 100
         HIDDEN_DIM = 256
@@ -710,6 +842,8 @@ def main(args):
 
             train_loss, train_acc, train_proc = train(model, train_iterator, optimizer, criterion, train_proc)
 
+        torch.save(model.state_dict(),'saved_models/lstm_models/model_nic_model.pt')
+
         valid_loss, valid_acc, avg_score, male_acc, female_acc, male_score, female_score  = evaluate(model, test_iterator, criterion, args.batch_size, TEXT, args)
         print('########## Results ##########')
         print(f'LIC score (LIC_M): {avg_score*100:.2f}%')
@@ -717,6 +851,17 @@ def main(args):
         #print(f'\t Female. score: {female_score*100:.2f}%')
         print('#############################')
         print()
+        if args.return_model:
+            new_model = RNNModified(INPUT_DIM, EMBEDDING_DIM, HIDDEN_DIM, OUTPUT_DIM, N_LAYERS, BIDIRECTIONAL, DROPOUT, PAD_IDX)
+            new_model.load_state_dict(model.state_dict())
+            new_model = new_model.to(device)
+            
+            return new_model, model_dict, TEXT, LABEL, IMID
+        
+    end_time = time.time()
+        
+    print('####### TIME: ', end_time - start_time ,' seconds ###########')
+
 
         
 
