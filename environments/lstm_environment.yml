@@ -5,7 +5,6 @@ channels:
   - defaults
 dependencies:
   - _libgcc_mutex=0.1
-  - _openmp_mutex=4.5
   - blas=1.0
   - bottleneck=1.3.5
   - brotlipy=0.7.0
@@ -18,7 +17,6 @@ dependencies:
   - colorama=0.4.6
   - confection=0.0.3
   - cryptography=38.0.2
-  - cudatoolkit=10.2.89
   - cymem=2.0.7
   - cython-blis=0.7.8
   - dataclasses=0.8
@@ -30,13 +28,15 @@ dependencies:
   - jinja2=3.1.2
   - joblib=1.1.1
   - langcodes=3.3.0
-  - ld_impl_linux-64=2.38
+  - libblas=3.9.0
+  - libcblas=3.9.0
+  - libcxx=14.0.6
   - libffi=3.4.2
-  - libgcc-ng=12.2.0
-  - libgfortran-ng=11.2.0
+  - libgfortran=5.0.0
   - libgfortran5=11.2.0
-  - libstdcxx-ng=12.2.0
+  - liblapack=3.9.0
   - libuv=1.40.0
+  - libzlib=1.2.13
   - llvm-openmp=12.0.1
   - markupsafe=2.1.1
   - mkl=2021.4.0
@@ -65,7 +65,7 @@ dependencies:
   - python-dateutil=2.8.2
   - python_abi=3.7
   - pytorch=1.9.0
-  - pytz=2022.7
+  - pytz=2022.7.1
   - readline=8.2
   - regex=2022.7.9
   - requests=2.28.1
@@ -80,6 +80,7 @@ dependencies:
   - spacy-loggers=1.0.4
   - sqlite=3.40.1
   - srsly=2.4.5
+  - tbb=2021.7.0
   - thinc=8.1.5
   - threadpoolctl=2.2.0
   - tk=8.6.12
@@ -97,7 +98,6 @@ dependencies:
   - pip:
       - captum==0.6.0
       - cycler==0.11.0
-      - en-core-web-sm==3.4.1
       - fonttools==4.38.0
       - kiwisolver==1.4.4
       - matplotlib==3.5.3
