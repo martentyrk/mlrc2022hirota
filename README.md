@@ -11,6 +11,8 @@
 - sklearn 1.0.2 
 - nltk 3.6.3
 - captum 0.6.0
+- transformers 4.26.0
+- pandas 1.5.3
 ```
 
 ### For BERT classifier
@@ -23,6 +25,7 @@
 - sklearn 1.0.2 
 - nltk 3.6.3
 - captum 0.6.0
+- pandas 1.5.3
 ```
 
 ### Commands
