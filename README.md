@@ -1,4 +1,9 @@
+# Reproducing and extending the paper "Quantifying Societal Bias Amplification in Image Captioning" by Hirota et al. (https://arxiv.org/abs/2203.15395)
+
+
+
 # Table of Contents
+- [Reproducing and extending the paper "Quantifying Societal Bias Amplification in Image Captioning" by Hirota et al. (https://arxiv.org/abs/2203.15395)](#reproducing-and-extending-the-paper-quantifying-societal-bias-amplification-in-image-captioning-by-hirota-et-al-httpsarxivorgabs220315395)
 - [Table of Contents](#table-of-contents)
   - [Dependencies](#dependencies)
     - [For LSTM classifier](#for-lstm-classifier)
