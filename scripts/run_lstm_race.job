@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --ntasks=1
+#SBATCH --job-name=slurm_output_lstm_race_seed12__capmodel_oscar__calcannleak_True
+#SBATCH --cpus-per-task=3
+#SBATCH --time=00:12:00
+#SBATCH --mem=32000M
+#SBATCH --output=slurm_race_human_seed0epoch20.out
+
+# Your job starts in the directory where you call sbatch
+cd $HOME/FACT_project/
+# Activate your environment
+
+
+#srun python3 race_lstm_leakage.py --seed 0 --num_epochs 20 --cap_model nic_equalizer --calc_model_leak True
+srun python3 race_lstm_leakage.py --seed $1 --num_epochs 20 --cap_model $2 --calc_ann_leak True

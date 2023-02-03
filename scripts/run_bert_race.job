@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=bert
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --time=01:00:00
+#SBATCH --mem=32000M
+#SBATCH --output=slurm_bert_human_5epochs_seed0.out
+
+
+cd $HOME/FACT_project/
+
+srun python3 race_bert_leakage.py --seed 0 --cap_model nic_equalizer --calc_ann_leak True

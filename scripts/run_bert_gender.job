@@ -12,4 +12,6 @@
 
 cd $HOME/FACT_project/
 
-srun python3 bert_leakage.py --seed 0 --cap_model nic --calc_ann_leak True
+srun python3 bert_leakage.py --seed $1 --cap_model $2 --calc_ann_leak True
+
+#srun python3 bert_leakage.py --seed 0 --cap_model nic --calc_ann_leak True

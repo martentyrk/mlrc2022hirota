@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=bert
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --time=00:15:00
+#SBATCH --mem=32000M
+
+
+for mod in sat nic nic_plus nic_equalizer oscar fc att2in transformer updn
+do
+  for seed in 0 12 456 789 100 200 300 400 500 1234
+  do
+    scommand="sbatch -J slurm_output_bertPT_seed${seed}__capmodel_${mod}__calcmodelleak_True scripts/run_bert_gender_pt.job $seed $mod"
+    echo "submit command: $scommand"
+    $scommand
+  done
+done

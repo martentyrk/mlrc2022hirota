@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --ntasks=1
+#SBATCH --job-name=lstm_captum
+#SBATCH --cpus-per-task=3
+#SBATCH --time=00:30:00
+#SBATCH --mem=32000M
+#SBATCH --output=nic_seed500attributions.out
+
+# Your job starts in the directory where you call sbatch
+cd $HOME/FACT_project/
+# Activate your environment
+
+
+srun python3 lstm_captum.py --seed $1 --cap_model $2 --calc_model_leak True --return_model True
+#srun python3 lstm_captum.py --seed 500 --cap_model nic --calc_model_leak True --return_model True
+

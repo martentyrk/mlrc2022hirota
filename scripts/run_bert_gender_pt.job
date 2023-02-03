@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu_titanrtx_shared_course
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=bert
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --time=00:55:00
+#SBATCH --mem=32000M
+#SBATCH --output=measure_time_for_ann_leak_bert_att2in_pretrained.out
+
+
+cd $HOME/FACT_project/
+
+srun python3 bert_leakage.py --seed 0 --cap_model att2in --calc_ann_leak True --freeze_bert True --num_epochs 20 --learning_rate 5e-5
