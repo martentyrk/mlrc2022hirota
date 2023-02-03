@@ -6,10 +6,6 @@ __pycache__/
 # C extensions
 *.so
 
-# Custom
-
-bias_data/
-
 # Distribution / packaging
 .Python
 build/
