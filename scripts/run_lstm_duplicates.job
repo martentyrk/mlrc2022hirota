@@ -7,15 +7,12 @@
 #SBATCH --cpus-per-task=3
 #SBATCH --time=00:25:00
 #SBATCH --mem=32000M
-#SBATCH --output=slurm_visualise_nicplus0_ns.out
+#SBATCH --output=slurm_lstm_duplicates.out
 
 # Your job starts in the directory where you call sbatch
 cd $HOME/FACT_project/
 # Activate your environment
 
-
-srun python3 lstm_leakage.py --seed $1 --cap_model $2 --calc_model_leak True
-
-#srun python3 lstm_remove_duplicates.py --seed 789 --cap_model updn --calc_model_leak True --remove_duplicates True
+srun python3 lstm_remove_duplicates.py --seed $1 --cap_model $2 --calc_model_leak True --remove_duplicates True
 
 

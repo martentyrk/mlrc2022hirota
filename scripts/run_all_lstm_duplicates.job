@@ -9,11 +9,11 @@
 #SBATCH --mem=32000M
 
 
-for mod in nic nic_plus nic_equalizer
+for mod in sat nic nic_plus nic_equalizer oscar fc att2in transformer updn
 do
   for seed in 0 12 100 200 300 400 456 500 789 1234
   do
-    scommand="sbatch -J slurm_output_lstm_captum_seed${seed}__capmodel_${mod}__calcmodelleak_True scripts/run_lstm_captum.job $seed $mod"
+    scommand="sbatch -J slurm_output_lstm_duplicates_seed${seed}__capmodel_${mod}__calcmodelleak_True scripts/run_lstm_duplicates.job $seed $mod"
     echo "submit command: $scommand"
     $scommand
   done
