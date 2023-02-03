@@ -3,7 +3,7 @@
   - [Dependencies](#dependencies)
     - [For LSTM classifier](#for-lstm-classifier)
     - [For BERT classifier](#for-bert-classifier)
-  - [Commands](#commands)
+  - [Reference to the original paper](#reference-to-the-original-paper)
 - [Reproduction of the results:](#reproduction-of-the-results)
   - [LIC scores for LSTM gender and race](#lic-scores-for-lstm-gender-and-race)
     - [Changing between LIC\_m and LIC\_d](#changing-between-lic_m-and-lic_d)
@@ -52,7 +52,7 @@
 - pandas 1.5.3
 ```
 
-## Commands 
+## Reference to the original paper
 Commands to run the code and more details about the original paper can 
 be found on the GitHub page https://github.com/rebnej/lick-caption-bias
 
