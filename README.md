@@ -1,16 +1,26 @@
 # Table of Contents
-1. [Dependencies](#dependecies)
-2. [Reference to the original GitHub](#commands)
-3. [Reproduction of the results](#reproduction-of-the-results)
-    1. [LIC scores for the LSTM](#experiments_lstm)
-    2. [LIC scores for the BERT](#experiments_bert)
-    3. [Calculating accuracy metrics](#calculating-accuracies)
-4. [Extension](#extension)
-   1. [Integrated gradients](#integrated-gradients)
-   2. [Data set dissection](#data-set-dissection)
+- [Table of Contents](#table-of-contents)
+  - [Dependencies](#dependencies)
+    - [For LSTM classifier](#for-lstm-classifier)
+    - [For BERT classifier](#for-bert-classifier)
+  - [Commands](#commands)
+- [Reproduction of the results:](#reproduction-of-the-results)
+  - [LIC scores for LSTM gender and race](#lic-scores-for-lstm-gender-and-race)
+    - [Changing between LIC\_m and LIC\_d](#changing-between-lic_m-and-lic_d)
+    - [Changing between gender and race](#changing-between-gender-and-race)
+  - [LIC scores for BERT gender and race](#lic-scores-for-bert-gender-and-race)
+    - [Changing between LIC\_m and LIC\_d](#changing-between-lic_m-and-lic_d-1)
+    - [Changing between gender and race](#changing-between-gender-and-race-1)
+    - [Changing between the pre-trained model and the fine-tuned model](#changing-between-the-pre-trained-model-and-the-fine-tuned-model)
+  - [Calculating accuracies](#calculating-accuracies)
+- [Extension](#extension)
+  - [Integrated gradients](#integrated-gradients)
+    - [Files explained](#files-explained)
+    - [Running lstm\_captum.py](#running-lstm_captumpy)
+  - [Data set dissection](#data-set-dissection)
 
 
-## Dependencies <a name="dependencies"></a>
+## Dependencies
 
 ### For LSTM classifier
 
@@ -42,13 +52,13 @@
 - pandas 1.5.3
 ```
 
-## Commands <a name="commands"></a>
+## Commands 
 Commands to run the code and more details about the original paper can 
 be found on the GitHub page https://github.com/rebnej/lick-caption-bias
 
-# Reproduction of the results: <a name="reproduction"></a>
+# Reproduction of the results: 
 
-## LIC scores for LSTM gender and race <a name="experiments_lstm"></a>
+## LIC scores for LSTM gender and race 
 
 In order to run the experiments to reproduce the LIC scores for LSTM race and gender the 
  LSTM environment with the dependencies shown above must be set up.
@@ -69,7 +79,7 @@ The LIC_m and LIC_d generation can be changed in the ```scripts/run_lstm_gender.
 In order to run experiments for race, then we have a separate .job file for that and it can be run by calling 
 ```sbatch scripts/run_all_lstm_race_models.job```
 
-## LIC scores for BERT gender and race <a name="experiments_bert"></a>
+## LIC scores for BERT gender and race 
 Before running the following lines, the BERT environment must be set up that is shown above.
 
 In the terminal use the following line of code to run all LSTM models with 10 seeds:
